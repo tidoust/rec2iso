@@ -217,7 +217,6 @@ function convertNode(node, options) {
       return convertSup(node, options);
     case 'UL':
       return convertUnorderedList(node, options);
-    case '#text':
     case 'BDI':
     case 'ABBR':
     case 'CITE':
@@ -225,9 +224,15 @@ function convertNode(node, options) {
       // TODO: improve support for ABBR, CITE, and Q
       return convertTextNode(node, options);
     default:
-      // TODO: handle img, table, etc.
-      console.log(node.nodeName);
-      return convertTextNode(node, options);
+      if (node.nodeType === 3) {
+        // Text node
+        return convertTextNode(node, options);
+      }
+      else if (node.nodeType === 1) {
+        // TODO: handle img, table, etc.
+        console.log(node.nodeName);
+        return convertTextNode(node, options);
+      }
   }
 }
 
@@ -235,6 +240,9 @@ function convertNode(node, options) {
  * Convert a generic section (<section>, <div>, <aside>)
  */
 function convertSection(section) {
+  if (section.hasAttribute('hidden')) {
+    return null;
+  }
   // TODO: add class logic as needed
   return convertChildNodes(section);
 }
