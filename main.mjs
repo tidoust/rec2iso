@@ -4,7 +4,6 @@
  *
  * TODO:
  * - Create bookmarks for things with IDs
- * - Handle <dfn> tags
  * - Handle internal links
  * - Handle ordered lists
  * - Handle tables
@@ -216,8 +215,16 @@ function convertNode(node, options) {
       return new TextRun('\n');
     case 'CODE':
       return convertCode(node, options);
+    case 'DD':
+      return convertDefinitionDescription(node, options);
+    case 'DFN':
+      return convertDefinition(node, options);
     case 'DIV':
       return convertSection(node, options);
+    case 'DL':
+      return convertDefinitionList(node, options);
+    case 'DT':
+      return convertDefinitionTerm(node, options);
     case 'EM':
     case 'I':
       return convertEm(node, options);
@@ -267,11 +274,11 @@ function convertNode(node, options) {
 /**
  * Convert a generic section (<section>, <div>, <aside>)
  */
-function convertSection(section) {
+function convertSection(section, options) {
   if (section.hasAttribute('hidden')) {
     return null;
   }
-  return convertChildNodes(section);
+  return convertChildNodes(section, options);
 }
 
 function convertParagraph(p, options) {
@@ -282,6 +289,9 @@ function convertParagraph(p, options) {
     para.bullet = {
       level: options.level
     };
+  }
+  if (options?.style) {
+    para.style = options.style;
   }
   return new Paragraph(para);
 }
@@ -437,6 +447,41 @@ function convertListItem(node, options) {
 function convertCode(node, options) {
   options = options ? Object.assign({}, options) : {};
   options.code = true;
+  return convertChildNodes(node, options);
+}
+
+function convertDefinitionList(node, options) {
+  if (node.hasAttribute('hidden')) {
+    return null;
+  }
+  return convertChildren(node, options);
+}
+
+function convertDefinitionTerm(node, options) {
+  return new Paragraph({
+    children: convertChildNodes(node),
+    style: 'Terms'
+  });
+}
+
+function convertDefinitionDescription(node, options) {
+  options = options ? Object.assign({}, options) : {};
+  options.style = 'Definition';
+  const docNodes = convertChildNodes(node, options);
+  if (docNodes?.find(node => node instanceof Paragraph)) {
+    return docNodes;
+  }
+  else {
+    return new Paragraph({
+      children: docNodes,
+      style: 'Definition'
+    });
+  }
+}
+
+function convertDefinition(node, options) {
+  options = options ? Object.assign({}, options) : {};
+  options.bold = true;
   return convertChildNodes(node, options);
 }
 
