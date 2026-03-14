@@ -1067,17 +1067,6 @@
       <w:sz w:val="18"/>
     </w:rPr>
   </w:style>
-  <w:style w:type="character" w:styleId="CodeInline">
-    <w:name w:val="Code Inline"/>
-    <w:basedOn w:val="DefaultParagraphFont"/>
-    <w:uiPriority w:val="16"/>
-    <w:semiHidden/>
-    <w:rsid w:val="00610D56"/>
-    <w:rPr>
-      <w:rFonts w:ascii="Courier New" w:hAnsi="Courier New"/>
-      <w:sz w:val="18"/>
-    </w:rPr>
-  </w:style>
   <w:style w:type="paragraph" w:styleId="Caption">
     <w:name w:val="caption"/>
     <w:basedOn w:val="Normal"/>

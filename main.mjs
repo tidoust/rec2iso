@@ -3,27 +3,30 @@
  * document.
  *
  * TODO:
- * - Handle <dfn> tags
  * - Create bookmarks for things with IDs
+ * - Handle <dfn> tags
  * - Handle internal links
  * - Handle ordered lists
+ * - Handle tables
+ * - Handle images
+ * - Handle <abbr>, <cite>, <q>
+ * - Handle list items that have block content
  * - Convert absolute links to self to internal links if some exist
- * - Drop non-significant spaces (bouh, may require adopting another approach :()
- * - Find a good way to handle list items that have block content
- * - Find a way to add custom styles to complete the styles.xml file
- * - Add a style for inline code
- * - Add a style for inline code that's also a link.
+ * - Drop non-significant spaces, coz' they are significant in a .docx document :(
  * - Add styles for definition lists and handle them.
  * - Style examples properly
  * - Style notes properly
- * - Add support for tables
- * - Add support for images
  * - Add the TOC
- * - Add the boilerplate text
+ * - Add the ISO boilerplate text (Foreword, copyright)
+ * - Add metadata to the .docx document such as creator, title, and description
  * - Consider renumbering sections?
  * - Consider rewriting the references appendix to a more ISO-friendly format?
  * - Drop "This section is non-normative" in the Introduction section. That's
  * always the case for the Introduction section in ISO documents.
+ * - Find a way to report spec editors. Any "acknowledgments" section would
+ * appear in the ISO version, while not the list of editors. That seems wrong!
+ * - Figure out what happens to custom styles during ISO publication. If they
+ * get ignored, find another approach!
  */
 
 import {
@@ -34,7 +37,8 @@ import {
   ExternalHyperlink,
   Header, Footer,
   TableOfContents, HeadingLevel,
-  AlignmentType
+  AlignmentType,
+  UnderlineType
 } from 'docx';
 import { JSDOM } from 'jsdom';
 import * as fs from 'fs/promises';
@@ -49,11 +53,35 @@ const styles = await fs.readFile('./styles.xml', 'utf-8');
 // Prepare the .docx document
 // Two main sections: preamble content which includes the table of contents
 // and the introduction. And the main content that starts with the spec title.
-// TODO: Add ISO styles
-// TODO: Add metadata such as creator, title, and description
-// TODO: Fill in "template" parts (e.g., Foreword, copyright, header, footer)
 const doc = {
   externalStyles: styles,
+  styles: {
+    characterStyles: [
+      {
+        id: 'CodeInline',
+        name: 'Code (inline)',
+        basedOn: 'DefaultParagraphFont',
+        run: {
+          font: 'Courier New',
+          size: 18
+        }
+      },
+      {
+        id: 'CodeHyperlink',
+        name: 'Code with hyperlink',
+        basedOn: 'DefaultParagraphFont',
+        run: {
+          font: 'Courier New',
+          size: 18,
+          color: '#0000FF',
+          underline: {
+            type: UnderlineType.SINGLE
+          }
+        }
+      }
+    ]
+  },
+
   sections: [
     {
       children: []
@@ -243,7 +271,6 @@ function convertSection(section) {
   if (section.hasAttribute('hidden')) {
     return null;
   }
-  // TODO: add class logic as needed
   return convertChildNodes(section);
 }
 
@@ -353,10 +380,13 @@ function convertTextNode(node, options) {
     textrun.subScript = true;
   }
   // TODO: need a style that is both hyperlink *and* code
-  if (options?.hyperlink) {
+  if (options?.hyperlink && options?.code) {
+    textrun.style = 'CodeHyperlink';
+  }
+  else if (options?.hyperlink) {
     textrun.style = 'Hyperlink';
   }
-  if (options?.code) {
+  else if (options?.code) {
     textrun.style = 'CodeInline';
   }
   return new TextRun(textrun);
