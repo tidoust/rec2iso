@@ -2,9 +2,9 @@
  * Patch the docx library to support adding custom styles on top of external
  * styles.
  *
- * THIS IS UGLY! Ideally, docx would have some support for that feature but:
- * I haven't looked at how to build the docx code from the source. Hot patching
- * the result of the build is just more convenient for now.
+ * THIS IS UGLY! Ideally, docx would support that feature. Hot patching is just
+ * more convenient for now until we figure out how to upstream the change to
+ * the source code.
  */
 
 import * as fs from 'fs/promises';

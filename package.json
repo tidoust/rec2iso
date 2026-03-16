@@ -2,5 +2,8 @@
   "dependencies": {
     "docx": "^9.6.1",
     "jsdom": "^28.1.0"
+  },
+  "scripts": {
+    "prepare": "node patch-docx.mjs"
   }
 }
