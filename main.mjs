@@ -9,7 +9,7 @@
  * - Handle tables
  * - Handle images
  * - Handle <abbr>, <cite>, <q>
- * - Handle list items that have block content
+ * - Handle list items that have block content. This includes nested lists!
  * - Convert absolute links to self to internal links if some exist
  * - Add styles for definition lists and handle them.
  * - Style examples properly
@@ -102,7 +102,6 @@ convertBody(dom.window.document.body);
 
 // Serialize the .docx document
 const docx = new Document(doc);
-
 const buffer = await Packer.toBuffer(docx);
 await fs.writeFile('wcag.docx', buffer);
 
