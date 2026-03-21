@@ -2,29 +2,6 @@
  * Convert a W3C Recommendation to something close to an ISO-compliant .docx
  * document.
  *
- * The main difficulties that arise when converting the HTML document are due
- * to the structural differences between the HTML and .docx formats. In
- * particular:
- *
- * - HTML has sectioning (and assimilated) such as <aside>, <div>, <section>,
- * and these sections can be nested. The .docx format has sections, but they
- * only exist to split page layouts (e.g., portrait/landscape). The .docx
- * format is just a flat list of Paragraphs otherwise.
- *
- * - HTML is flexible when it comes to mixing block and inline content. For
- * example, <div> and <li> may contain inline content and/or block content. The
- * .docx format is again just a flat list of Paragraphs, each Paragraph
- * containing inline content (instances of TextRun, SymbolRun, or ImageRun).
- *
- * - HTML also supports nesting of inline content, such as wrapping <code> into
- * a <b>. The .docx format has limited support for nesting. A TextRun cannot be
- * nested into another TextRun (but note it can be nested into an Hyperlink).
- *
- * - HTML has non-significant whitespaces. The .docx format does not.
- *
- * - HTML supports setting more than one style class per element. The .docx
- * format does not (and separates between paragraph and character styles).
- *
  * TODO:
  * - Create bookmarks for things with IDs
  * - Handle internal links
