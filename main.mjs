@@ -11,7 +11,6 @@
  * - Handle <abbr>, <cite>, <q>
  * - Handle list items that have block content
  * - Convert absolute links to self to internal links if some exist
- * - Drop non-significant spaces, coz' they are significant in a .docx document :(
  * - Add styles for definition lists and handle them.
  * - Style examples properly
  * - Style notes properly
@@ -92,8 +91,11 @@ const doc = {
 };
 
 // Load W3C Recommendation
+// const dom = await JSDOM.fromURL(process.argv[2]);
 const dom = await JSDOM.fromFile('wcag.html');
 
+// Drop non-significant whitespaces to ease conversion
+dropNonSignificantWhitespaces(dom.window.document.body);
 
 // Convert the W3C Recommendation
 convertBody(dom.window.document.body);
@@ -104,6 +106,39 @@ const docx = new Document(doc);
 const buffer = await Packer.toBuffer(docx);
 await fs.writeFile('wcag.docx', buffer);
 
+
+/************************************************************
+ * Remove non-significant whitespaces
+ ***********************************************************/
+function dropNonSignificantWhitespaces(body) {
+  const inlineElements = [
+    'a', 'em', 'strong', 'small', 's', 'cite', 'q', 'dfn', 'abbr', 'ruby',
+    'rt', 'rp', 'data', 'time', 'code', 'var', 'samp', 'kbd', 'sub', 'sup',
+    'i', 'b', 'u', 'mark', 'bdi', 'bdo', 'span', 'br', 'wbr'
+  ];
+  const iterator = body.ownerDocument.createNodeIterator(body);
+  let node;
+  while (node = iterator.nextNode()) {
+    // Whitespaces appear in text nodes
+    if (node.nodeType === 3) {
+      const parent = node.parentNode;
+      if (parent.nodeName === 'PRE') {
+        continue;
+      }
+      node.textContent = node.textContent.replace(/\s+/g, ' ');
+      const isBlockParent = !inlineElements.includes(parent.nodeName.toLowerCase());
+      if (isBlockParent) {
+        node.textContent.trim();
+      }
+      if (!node.textContent) {
+        node.remove();
+      }
+      if (isBlockParent && node.textContent === ' ') {
+        node.remove();
+      }
+    }
+  }
+}
 
 
 /************************************************************
@@ -319,6 +354,9 @@ function convertSup(node, options) {
  */
 function convertLink(a, options) {
   // TODO: distinguish internal/external links
+  if (!a.textContent) {
+    return null;
+  }
   options = options ? Object.assign({}, options) : {};
   options.hyperlink = true;
   return new ExternalHyperlink({
