@@ -3,8 +3,6 @@
  * document.
  *
  * TODO:
- * - Create bookmarks for things with IDs
- * - Handle internal links
  * - Handle ordered lists
  * - Handle tables
  * - Handle images
@@ -32,11 +30,13 @@ import {
   Packer,
   Paragraph,
   TextRun,
+  InternalHyperlink,
   ExternalHyperlink,
   Header, Footer,
   TableOfContents, HeadingLevel,
   AlignmentType,
-  UnderlineType
+  UnderlineType,
+  Bookmark
 } from 'docx';
 import { JSDOM } from 'jsdom';
 import * as fs from 'fs/promises';
@@ -89,6 +89,9 @@ const doc = {
     }
   ]
 };
+
+// Bookmark IDs that have already been created
+const bookmarks = {};
 
 // Load W3C Recommendation
 // const dom = await JSDOM.fromURL(process.argv[2]);
@@ -234,9 +237,15 @@ function convertAbstract(abstract) {
 
 
 /**
- * Convert a generic DOM node
+ * Convert a generic DOM node to a list of docx objects that can mix Paragraphs
+ * and inline objects à la TextRun.
  */
 function convertNode(node, options) {
+  if (node.id) {
+    options = copyOptions(options);
+    options.ids = options.ids ?? [];
+    options.ids.push(node.id);
+  }
   switch (node.nodeName) {
     case 'A':
       return convertLink(node, options);
@@ -299,7 +308,7 @@ function convertNode(node, options) {
       }
       else if (node.nodeType === 1) {
         // TODO: handle img, table, etc.
-        console.log(node.nodeName);
+        console.error(`Unsupported node type found: ${node.nodeName}`);
         return convertTextNode(node, options);
       }
   }
@@ -317,7 +326,7 @@ function convertSection(section, options) {
 
 function convertParagraph(p, options) {
   const para = {
-    children: convertChildNodes(p)
+    children: convertChildNodes(p, options)
   };
   if (options?.level === 0 || options?.level > 0) {
     para.bullet = {
@@ -326,6 +335,9 @@ function convertParagraph(p, options) {
   }
   if (options?.style) {
     para.style = options.style;
+  }
+  if (options?.heading) {
+    para.heading = options.heading;
   }
   return new Paragraph(para);
 }
@@ -336,13 +348,13 @@ function convertSpan(span, options) {
 }
 
 function convertSub(node, options) {
-  options = options ? Object.assign({}, options) : {};
+  options = copyOptions(options);
   options.subScript = true;
   return convertChildNodes(node);
 }
 
 function convertSup(node, options) {
-  options = options ? Object.assign({}, options) : {};
+  options = copyOptions(options);
   options.superScript = true;
   return convertChildNodes(node);
 }
@@ -352,33 +364,36 @@ function convertSup(node, options) {
  * Link is more direct otherwise.
  */
 function convertLink(a, options) {
-  // TODO: distinguish internal/external links
   if (!a.textContent) {
     return null;
   }
-  options = options ? Object.assign({}, options) : {};
+  options = copyOptions(options);
   options.hyperlink = true;
-  return new ExternalHyperlink({
-    children: convertChildNodes(a, options),
-    link: a.href
-  });
-}
-
-function convertHeading(h) {
-  const level = h.nodeName.substring(1);
-  if (level === '1') {
-    // Why ISO, why?!?
-    return new Paragraph({
-      children: convertChildNodes(h),
-      style: 'zzSTDTitle'
+  if (a.getAttribute('href').startsWith('#')) {
+    return new InternalHyperlink({
+      children: convertChildNodes(a, options),
+      anchor: a.getAttribute('href').substring(1)
     });
   }
   else {
-    return new Paragraph({
-      children: convertChildNodes(h),
-      heading: HeadingLevel['HEADING_' + level]
+    return new ExternalHyperlink({
+      children: convertChildNodes(a, options),
+      link: a.href
     });
   }
+}
+
+function convertHeading(h, options) {
+  const level = h.nodeName.substring(1);
+  options = copyOptions(options);
+  if (level === '1') {
+    // Why ISO, why?!?
+    options.style = 'zzSTDTitle';
+  }
+  else {
+    options.heading = HeadingLevel['HEADING_' + level];
+  }
+  return convertParagraph(h, options);
 }
 
 /**
@@ -388,7 +403,7 @@ function convertHeading(h) {
  * children, so we need to "propagate" the emphasis to children
  */
 function convertEm(em, options) {
-  options = options ? Object.assign({}, options) : {};
+  options = copyOptions(options);
   options.italics = true;
   return convertChildNodes(em, options);
 }
@@ -400,7 +415,7 @@ function convertEm(em, options) {
  * children, so we need to "propagate" the bold aspect to children
  */
 function convertStrong(em, options) {
-  options = options ? Object.assign({}, options) : {};
+  options = copyOptions(options);
   options.bold = true;
   return convertChildNodes(em, options);
 }
@@ -436,13 +451,26 @@ function convertTextNode(node, options) {
   else if (options?.code) {
     textrun.style = 'CodeInline';
   }
-  return new TextRun(textrun);
+  let res = new TextRun(textrun);
+  const ids = options?.ids ?? [];
+  ids.reverse();
+  for (const id of ids) {
+    if (bookmarks[id] || id.startsWith('ref-for-')) {
+      continue;
+    }
+    bookmarks[id] = true;
+    if (res instanceof Bookmark) {
+      console.error(`Nested bookmark: ${id}`);
+    }
+    res = new Bookmark({ id, children: [res] });
+  }
+  return res;
 }
 
 
 function convertOrderedList(node, options) {
   // TODO: handle numbers
-  options = options ? Object.assign({}, options) : {};
+  options = copyOptions(options);
   if (options.level === 0 || options.level > 0) {
     options.level += 1;
   }
@@ -453,7 +481,7 @@ function convertOrderedList(node, options) {
 }
 
 function convertUnorderedList(node, options) {
-  options = options ? Object.assign({}, options) : {};
+  options = copyOptions(options);
   if (options.level === 0 || options.level > 0) {
     options.level += 1;
   }
@@ -472,17 +500,12 @@ function convertListItem(node, options) {
     return docNodes;
   }
   else {
-    return new Paragraph({
-      children: docNodes,
-      bullet: {
-        level: options.level
-      }
-    });
+    return convertParagraph(node, options);
   }
 }
 
 function convertCode(node, options) {
-  options = options ? Object.assign({}, options) : {};
+  options = copyOptions(options);
   options.code = true;
   return convertChildNodes(node, options);
 }
@@ -495,29 +518,25 @@ function convertDefinitionList(node, options) {
 }
 
 function convertDefinitionTerm(node, options) {
-  return new Paragraph({
-    children: convertChildNodes(node),
-    style: 'Terms'
-  });
+  options = copyOptions(options);
+  options.style = 'Terms';
+  return convertParagraph(node, options);
 }
 
 function convertDefinitionDescription(node, options) {
-  options = options ? Object.assign({}, options) : {};
+  options = copyOptions(options);
   options.style = 'Definition';
   const docNodes = convertChildNodes(node, options);
   if (docNodes?.find(node => node instanceof Paragraph)) {
     return docNodes;
   }
   else {
-    return new Paragraph({
-      children: docNodes,
-      style: 'Definition'
-    });
+    return convertParagraph(node, options);
   }
 }
 
 function convertDefinition(node, options) {
-  options = options ? Object.assign({}, options) : {};
+  options = copyOptions(options);
   options.bold = true;
   return convertChildNodes(node, options);
 }
@@ -575,3 +594,10 @@ function appendRootNodes(nodes, options) {
   }
 }
 
+
+/************************************************************
+ * Utility functions
+ ***********************************************************/
+function copyOptions(options) {
+  return options ? Object.assign({}, options) : {};
+}

@@ -14,7 +14,7 @@ Node.js command-line interface to convert a [W3C Recommendation](https://www.w3.
 3. Install dependencies: `npm ci`
 
 > [!NOTE]
-> Installation of dependencies will also patch the docx library that the code depends on. The patch is needed to make it possible to define additional custom styles on top of the ISO styles that the Word template defines.
+> Installation of dependencies will also patch the docx library that the code depends on. The patch is needed to make it possible to define additional custom styles on top of the ISO styles that the Word template defines; as well as to cater for nested Bookmarks.
 
 
 ### Usage
