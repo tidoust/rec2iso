@@ -14,7 +14,7 @@ Node.js command-line interface to convert a [W3C Recommendation](https://www.w3.
 3. Install dependencies: `npm ci`
 
 > [!NOTE]
-> Installation of dependencies will also patch the docx library that the code depends on. The patch is needed to make it possible to define additional custom styles on top of the ISO styles that the Word template defines; as well as to cater for nested Bookmarks.
+> Installation of dependencies will also patch the docx library that the code depends on (by calling the `patch-docx.mjs` script). The patch is needed to make it possible to define additional custom styles on top of the ISO styles that the Word template defines; as well as to create nested Bookmarks.
 
 
 ### Usage
@@ -22,15 +22,15 @@ Node.js command-line interface to convert a [W3C Recommendation](https://www.w3.
 Run:
 
 ```bash
-node main.mjs [url] > [file].docx
+node main.mjs [shortname]
 ```
 
-... where `[url]` is the URL of a W3C Recommendation that you would like to convert. The command will fetch the Recommendation and convert it to an `output.docx` document in the same folder.
+... where `[shortname]` is the URL of a W3C Recommendation that you would like to convert. The command will fetch the Recommendation and convert it to an docx document named after the shortname in the same folder.
 
 For example:
 
 ```bash
-node main.mjs https://www.w3.org/TR/WCAG22/
+node main.mjs WCAG22
 ```
 
 ## Implementation notes
