@@ -93,9 +93,14 @@ const doc = {
 // Bookmark IDs that have already been created
 const bookmarks = {};
 
+// Read the shortname of the W3C Recommendation to convert
+const shortname = process.argv[2];
+const url = `https://www.w3.org/TR/${shortname}/`;
+
 // Load W3C Recommendation
-// const dom = await JSDOM.fromURL(process.argv[2]);
-const dom = await JSDOM.fromFile('wcag.html');
+// (file version in comment is for debugging)
+const dom = await JSDOM.fromURL(url);
+//const dom = await JSDOM.fromFile('wcag.html');
 
 // Drop non-significant whitespaces to ease conversion
 dropNonSignificantWhitespaces(dom.window.document.body);
@@ -106,7 +111,7 @@ convertBody(dom.window.document.body);
 // Serialize the .docx document
 const docx = new Document(doc);
 const buffer = await Packer.toBuffer(docx);
-await fs.writeFile('wcag.docx', buffer);
+await fs.writeFile(`${shortname}.docx`, buffer);
 
 
 /************************************************************
@@ -459,9 +464,6 @@ function convertTextNode(node, options) {
       continue;
     }
     bookmarks[id] = true;
-    if (res instanceof Bookmark) {
-      console.error(`Nested bookmark: ${id}`);
-    }
     res = new Bookmark({ id, children: [res] });
   }
   return res;
