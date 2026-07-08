@@ -40,6 +40,7 @@ export function dropNonSignificantWhitespaces(root) {
         node.textContent.trimStart() :
         node.textContent.trimEnd();
       if (node.textContent !== trimmed) {
+        // console.warn(`- trim ${what} of text ${node.textContent} EOF`);
         node.textContent = trimmed;
         if (trimmed === '') {
           node._remove = true;
@@ -55,7 +56,9 @@ export function dropNonSignificantWhitespaces(root) {
     if (!inlineElements.includes(nodeName)) {
       return;
     }
-    return trimNode(node.firstChild, what);
+    return what === 'start' ?
+      trimNode(node.firstChild, what) :
+      trimNode(node.lastChild, what);
   }
 
   /**
@@ -71,6 +74,7 @@ export function dropNonSignificantWhitespaces(root) {
       return;
     }
     if (node.nodeType === Node.TEXT_NODE) {
+      // console.warn(`- walk text ${node.textContent} EOF`);
       const textContent = node.textContent.replace(/\s+/g, ' ');
       if (node.textContent !== textContent) {
         node.textContent = textContent;
@@ -83,6 +87,7 @@ export function dropNonSignificantWhitespaces(root) {
     }
     const nodeName = node.nodeName.toLowerCase();
     if (inlineElements.includes(nodeName)) {
+      // console.warn(`- walk inline ${nodeName}`);
       walkInline(node);
     }
     else {
@@ -90,6 +95,7 @@ export function dropNonSignificantWhitespaces(root) {
       if (['pre', 'style', 'script'].includes(nodeName)) {
         return;
       }
+      // console.warn(`- walk block ${nodeName}`);
       walkBlock(node);
     }
 
@@ -155,7 +161,7 @@ export function dropNonSignificantWhitespaces(root) {
   while (true) {
     updatesMade = 0;
     walk(root);
-    console.warn(`updates made: ${updatesMade}`);
+    // console.warn(`updates made: ${updatesMade}`);
     if (updatesMade === 0) {
       break;
     }

@@ -69,4 +69,11 @@ describe('The non-significant whitespaces handler', () => {
       </div>`;
     assertResult(html, '<div><p>Hello world</p></div>');
   });
+
+  it('handles nested inline content', () => {
+    const html = `
+      <p><strong>The <a>web</a> is used. </strong> This is good.</p>
+    `;
+    assertResult(html, `<p><strong>The <a>web</a> is used.</strong> This is good.</p>`);
+  });
 });
