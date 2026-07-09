@@ -3,16 +3,14 @@ import assert from 'node:assert';
 import { dropNonSignificantWhitespaces } from '../src/drop-whitespaces.mjs';
 import { JSDOM } from 'jsdom';
 
-function parse(html) {
+function run(html) {
   const dom = new JSDOM(html);
   dropNonSignificantWhitespaces(dom.window.document.body);
-  return dom.window.document.body.innerHTML;
+  return dom.window.document.body?.innerHTML ?? '';
 }
 
 function assertResult(html, expected) {
-  const dom = new JSDOM(html);
-  dropNonSignificantWhitespaces(dom.window.document.body);
-  const result = dom.window.document.body?.innerHTML ?? '';
+  const result = run(html);
   assert.deepStrictEqual(result, expected);
 }
 
