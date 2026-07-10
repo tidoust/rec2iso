@@ -163,9 +163,9 @@ function getOptionsFromAttributes(el, options = {}) {
       options.numbering = false;
     }
   }
-  if (el.hasAttribute('data-bullet')) {
+  if (el.hasAttribute('data-hasbullet')) {
     options.bullet = {
-      level: el.getAttribute('data-bullet')
+      level: parseInt(el.getAttribute('data-level'), 10)
     };
   }
   return options;
