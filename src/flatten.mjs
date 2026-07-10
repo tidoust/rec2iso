@@ -1,4 +1,4 @@
-const DEBUG = true;
+const DEBUG = false;
 
 /**
  * Flattens a DOM tree to a list of <p> elements with simplified semantics.
@@ -104,8 +104,9 @@ export function flattenDOM(element) {
     const {
       inAnchorWithHref = false,
       attrs = {},
-      listLevel = 0,
-      listBullet = null
+      nestedLevel = 0,
+      listItemIndex = 0,
+      listType = 'ul'
     } = context;
 
     // Handle text nodes - wrap in span
@@ -166,8 +167,9 @@ export function flattenDOM(element) {
 
     // Build new attribute context
     const newAttrs = { ...attrs };
-    let newListLevel = listLevel;
-    let newListBullet = listBullet;
+    let newNestedLevel = nestedLevel;
+    let newListItemIndex = listItemIndex;
+    let newListType = listType;
 
     // Apply formatting rules (12-16, 19-21)
     switch (nodeName) {
@@ -189,16 +191,11 @@ export function flattenDOM(element) {
     const headingLevel = headingMatch ? parseInt(headingMatch[1], 10) : null;
 
     // Handle list items
-    let isListItem = false;
     if (nodeName === 'li') {
-      isListItem = true;
-      const parentTag = node.parentElement?.nodeName.toLowerCase();
-      const isOrdered = parentTag === 'ol';
       const parentList = node.parentElement;
-      const itemIndex = parentList ? Array.from(parentList.children).indexOf(node) + 1 : 1;
-
-      newListLevel = (parentList ? (parentList.dataset.level ? parseInt(parentList.dataset.level, 10) : 0) : 0) + 1;
-      newListBullet = isOrdered ? itemIndex : '\u2022';
+      newNestedLevel += 1;
+      newListType = parentList.nodeName.toLowerCase();
+      newListItemIndex = Array.from(parentList.children).indexOf(node) + 1;
     }
 
     // Handle anchor elements
@@ -210,9 +207,12 @@ export function flattenDOM(element) {
         log(`- skip nested/ID anchor`);
         const children = [];
         for (const child of node.childNodes) {
-          children.push(...processNode(child, { 
-            ...context, 
-            attrs: newAttrs 
+          children.push(...processNode(child, {
+            ...context,
+            attrs: newAttrs,
+            nestedLevel,
+            listItemIndex,
+            listType
           }));
         }
         const ids = children.filter(child => child.type === 'EMPTY_ANCHOR_ID');
@@ -232,6 +232,9 @@ export function flattenDOM(element) {
           ...context,
           inAnchorWithHref: true,
           attrs: newAttrs,
+          nestedLevel,
+          listItemIndex,
+          listType
         }));
       }
       const ids = children.filter(child => child.type === 'EMPTY_ANCHOR_ID');
@@ -251,8 +254,9 @@ export function flattenDOM(element) {
       children.push(...processNode(child, {
         inAnchorWithHref,
         attrs: newAttrs,
-        listLevel: newListLevel,
-        listBullet: isListItem ? newListBullet : newListBullet
+        nestedLevel: newNestedLevel,
+        listItemIndex: newListItemIndex,
+        listType: newListType
       }));
     }
 
@@ -267,7 +271,7 @@ export function flattenDOM(element) {
       result = wrapWithId(result, id);
     }
 
-    const shouldCreateParagraph = blockTags.includes(nodeName) || isListItem;
+    const shouldCreateParagraph = blockTags.includes(nodeName);
     if (shouldCreateParagraph) {
       // Processed children may contain a bunch of <p> elements, mixed with
       // <span> and <a> elements. Any <p> should be surfaced as-is, while
@@ -278,14 +282,18 @@ export function flattenDOM(element) {
         if (headingLevel) {
           p.setAttribute('data-heading', headingLevel);
         }
-
-        // Apply list attributes
-        if (isListItem) {
-          p.setAttribute('data-bullet', newListBullet);
-          p.setAttribute('data-level', newListLevel);
-        } else if (newListLevel > 0 && !newListBullet) {
-          // Additional block in list item
-          p.setAttribute('data-level', newListLevel);
+        if (newListItemIndex) {
+          if (p.hasAttribute('data-listindex')) {
+            if (p.hasAttribute('data-hasbullet') &&
+                p.getAttribute('data-level') === ('' + newNestedLevel)) {
+              p.removeAttribute('data-hasbullet');
+            }
+          }
+          else {
+            p.setAttribute('data-listtype', newListType);
+            p.setAttribute('data-level', newNestedLevel);
+            p.setAttribute('data-listindex', newListItemIndex);
+          }
         }
         flatChildren.push(p);
       }
@@ -309,6 +317,19 @@ export function flattenDOM(element) {
       if (currentParagraph) {
         addParagraph(currentParagraph);
         currentParagraph = null;
+      }
+      // Set the "data-hasbullet" attribute to the first paragraph in a list
+      const listChildren = flatChildren.filter(child =>
+        child.getAttribute('data-level') === ('' + newNestedLevel) &&
+        child.hasAttribute('data-listindex'));
+      let lastSeenIndex = '';
+      for (const child of listChildren) {
+        const index = child.getAttribute('data-listindex');
+        if (index === lastSeenIndex) {
+          continue;
+        }
+        lastSeenIndex = index;
+        child.setAttribute('data-hasbullet', '');
       }
       log(`- paragraphs created`);
       return wrapWithId(flatChildren, elementId);

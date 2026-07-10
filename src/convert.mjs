@@ -1,6 +1,6 @@
 /************************************************************
- * Series of conversion functions to process a DOM tree and
- * convert it to an exist .docx document
+ * Conversion function that takes a flattened DOM tree as
+ * input and converts it to a list of docx Paragraph
  ***********************************************************/
 
 import { appendRootNodes } from './append-root-nodes.mjs';

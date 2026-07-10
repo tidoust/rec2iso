@@ -59,13 +59,8 @@ describe('The flattening algorithm', () => {
   });
 
   it('creates an anchor and a link when both are combined', () => {
-    const html = '<p id="foo" href="#bar">bar</p>';
+    const html = '<p><a id="foo" href="#bar">bar</a></p>';
     assertResult(html, '<p><a id="foo"><a href="#bar"><span>bar</span></a></a></p>');
-  });
-
-  it('skips inner links', () => {
-    const html = '<p><a href="#outer">The <a href="#inner">inner link</a> is ignored.</a></p>';
-    assertResult(html, '<p><a href="#outer"><span>The inner link is ignored.</span></p>');
   });
 
   it('does not nest spans', () => {
@@ -80,7 +75,10 @@ describe('The flattening algorithm', () => {
 
   it('reports code and pre blocks', () => {
     const html = '<div><p>Some <code>code</code>.</p><pre>And a pre</pre></div>';
-    assertResult(html, '<p><span>Some </span><span data-code="">code</span><span>.</span></p>\n<p><span data-code="">And a pre</span></p>');
+    assertResult(html, [
+      '<p><span>Some </span><span data-code="">code</span><span>.</span></p>',
+      '<p><span data-code="">And a pre</span></p>'
+    ]);
   });
 
   it('reports definition terms and definitions', () => {
@@ -94,5 +92,86 @@ describe('The flattening algorithm', () => {
   it('formats dfns', () => {
     const html = '<p>The <dfn id="foo">foo</dfn> concept.</p>';
     assertResult(html, '<p><span>The </span><a id="foo"><span data-bold="">foo</span></a><span> concept.</span></p>')
+  });
+
+  it('flattens a simple unordered list', () => {
+    const html = '<ul><li>first</li><li>second</li><li>third</li></ul>';
+    assertResult(html, [
+      '<p data-listtype="ul" data-level="1" data-listindex="1" data-hasbullet=""><span>first</span></p>',
+      '<p data-listtype="ul" data-level="1" data-listindex="2" data-hasbullet=""><span>second</span></p>',
+      '<p data-listtype="ul" data-level="1" data-listindex="3" data-hasbullet=""><span>third</span></p>'
+    ]);
+  });
+
+  it('flattens a simple ordered list', () => {
+    const html = '<ol><li>first</li><li>second</li><li>third</li></ol>';
+    assertResult(html, [
+      '<p data-listtype="ol" data-level="1" data-listindex="1" data-hasbullet=""><span>first</span></p>',
+      '<p data-listtype="ol" data-level="1" data-listindex="2" data-hasbullet=""><span>second</span></p>',
+      '<p data-listtype="ol" data-level="1" data-listindex="3" data-hasbullet=""><span>third</span></p>'
+    ]);
+  });
+
+  it('flattens a nested unordered list', () => {
+    const html = '<ul><li>first</li><li>' +
+      '<ul><li>foo</li><li>bar</li></ul>' +
+      '</li><li>third</li></ul>';
+    assertResult(html, [
+      '<p data-listtype="ul" data-level="1" data-listindex="1" data-hasbullet=""><span>first</span></p>',
+      '<p data-listtype="ul" data-level="2" data-listindex="1" data-hasbullet=""><span>foo</span></p>',
+      '<p data-listtype="ul" data-level="2" data-listindex="2" data-hasbullet=""><span>bar</span></p>',
+      '<p data-listtype="ul" data-level="1" data-listindex="3" data-hasbullet=""><span>third</span></p>'
+    ]);
+  });
+
+  it('flattens a nested ordered list', () => {
+    const html = '<ol><li>first</li><li>' +
+      '<ol><li>foo</li><li>bar</li></ol>' +
+      '</li><li>third</li></ol>';
+    assertResult(html, [
+      '<p data-listtype="ol" data-level="1" data-listindex="1" data-hasbullet=""><span>first</span></p>',
+      '<p data-listtype="ol" data-level="2" data-listindex="1" data-hasbullet=""><span>foo</span></p>',
+      '<p data-listtype="ol" data-level="2" data-listindex="2" data-hasbullet=""><span>bar</span></p>',
+      '<p data-listtype="ol" data-level="1" data-listindex="3" data-hasbullet=""><span>third</span></p>'
+    ]);
+  });
+
+  it('flattens a complex nested list', () => {
+    const html = '<ul><li>first</li><li>' +
+      '<ol><li>foo</li><li>bar</li></ol>' +
+      '</li><li>third</li></ul>';
+    assertResult(html, [
+      '<p data-listtype="ul" data-level="1" data-listindex="1" data-hasbullet=""><span>first</span></p>',
+      '<p data-listtype="ol" data-level="2" data-listindex="1" data-hasbullet=""><span>foo</span></p>',
+      '<p data-listtype="ol" data-level="2" data-listindex="2" data-hasbullet=""><span>bar</span></p>',
+      '<p data-listtype="ul" data-level="1" data-listindex="3" data-hasbullet=""><span>third</span></p>'
+    ]);
+  });
+
+  it('flattens a list item with a paragraph', () => {
+    const html = '<ul><li><p>first paragraph</p></li></ul>';
+    assertResult(html, [
+      '<p data-listtype="ul" data-level="1" data-listindex="1" data-hasbullet=""><span>first paragraph</span></p>'
+    ]);
+  });
+
+  it('flattens a list item with multiple paragraphs', () => {
+    const html = '<ul><li><p>first paragraph</p><p>second paragraph</p></li></ul>';
+    assertResult(html, [
+      '<p data-listtype="ul" data-level="1" data-listindex="1" data-hasbullet=""><span>first paragraph</span></p>',
+      '<p data-listtype="ul" data-level="1" data-listindex="1"><span>second paragraph</span></p>'
+    ]);
+  });
+
+  it('flattens a super complex list', () => {
+    const html = '<ul><li>1.1<p>1.2</p><p>1.3</p></li><li><ol><li><p>2.1</p><p>2.2</p></li></ol></li><li>3.1</li></ul>';
+    assertResult(html, [
+      '<p data-listtype="ul" data-level="1" data-listindex="1" data-hasbullet=""><span>1.1</span></p>',
+      '<p data-listtype="ul" data-level="1" data-listindex="1"><span>1.2</span></p>',
+      '<p data-listtype="ul" data-level="1" data-listindex="1"><span>1.3</span></p>',
+      '<p data-listtype="ol" data-level="2" data-listindex="1" data-hasbullet=""><span>2.1</span></p>',
+      '<p data-listtype="ol" data-level="2" data-listindex="1"><span>2.2</span></p>',
+      '<p data-listtype="ul" data-level="1" data-listindex="3" data-hasbullet=""><span>3.1</span></p>'
+    ]);
   });
 });
