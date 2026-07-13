@@ -7,11 +7,8 @@
  * - Handle tables
  * - Handle images
  * - Handle <abbr>, <cite>, <q>
- * - Handle list items that have block content. This includes nested lists!
  * - Convert absolute links to self to internal links if some exist
  * - Add styles for definition lists and handle them.
- * - Style examples properly
- * - Style notes properly
  * - Add the TOC
  * - Add the ISO boilerplate text (Foreword, copyright)
  * - Add metadata to the .docx document such as creator, title, and description
@@ -46,7 +43,7 @@ const url = `https://www.w3.org/TR/${shortname}/`;
 // Load W3C Recommendation
 // (file version in comment is for debugging)
 //const dom = await JSDOM.fromURL(url);
-const dom = await JSDOM.fromFile('wcag.html');
+const dom = await JSDOM.fromFile(`${shortname}.html`);
 
 // Drop non-significant whitespaces to ease conversion
 dropNonSignificantWhitespaces(dom.window.document.body);

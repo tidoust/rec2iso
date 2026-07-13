@@ -16,12 +16,15 @@ export function flattenDOM(element) {
 
   /**
    * Create a span with text and data attributes
+   * that apply to inline content
    */
   function createSpan(text, attrs = {}) {
     const span = document.createElement('span');
     span.textContent = text;
     for (const [key, value] of Object.entries(attrs)) {
-      if (value !== undefined && value !== false) {
+      if (value !== undefined && value !== false &&
+          key !== 'data-dt' && key !== 'data-dd' &&
+          key !== 'data-example' && key !== 'data-note') {
         span.setAttribute(key, '');
       }
     }
@@ -186,6 +189,13 @@ export function flattenDOM(element) {
       case 'dd': newAttrs['data-dd'] = true; break;
     }
 
+    if ([...node.classList].includes('example')) {
+      newAttrs['data-example'] = true;
+    }
+    if ([...node.classList].includes('note')) {
+      newAttrs['data-note'] = true;
+    }
+
     // Check for heading
     const headingMatch = nodeName.match(/^h([1-6])$/);
     const headingLevel = headingMatch ? parseInt(headingMatch[1], 10) : null;
@@ -200,7 +210,8 @@ export function flattenDOM(element) {
 
     // Handle anchor elements
     if (nodeName === 'a') {
-      const hasHref = node.hasAttribute('href');
+      const hasHref = node.hasAttribute('href') &&
+        ![...node.classList].includes('self-link');
       if ((inAnchorWithHref && hasHref) || !hasHref) {
         // Nested anchor with href, or anchor that sets an ID
         // Ignore the link, process children instead
@@ -294,6 +305,21 @@ export function flattenDOM(element) {
             p.setAttribute('data-level', newNestedLevel);
             p.setAttribute('data-listindex', newListItemIndex);
           }
+        }
+        if (newAttrs['data-code']) {
+          p.setAttribute('data-code', '');
+        }
+        if (newAttrs['data-dt']) {
+          p.setAttribute('data-dt', '');
+        }
+        if (newAttrs['data-dd']) {
+          p.setAttribute('data-dd', '');
+        }
+        if (newAttrs['data-example']) {
+          p.setAttribute('data-example', '');
+        }
+        if (newAttrs['data-note']) {
+          p.setAttribute('data-note', '');
         }
         flatChildren.push(p);
       }

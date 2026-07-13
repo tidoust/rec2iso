@@ -77,15 +77,22 @@ describe('The flattening algorithm', () => {
     const html = '<div><p>Some <code>code</code>.</p><pre>And a pre</pre></div>';
     assertResult(html, [
       '<p><span>Some </span><span data-code="">code</span><span>.</span></p>',
-      '<p><span data-code="">And a pre</span></p>'
+      '<p data-code=""><span data-code="">And a pre</span></p>'
     ]);
+  });
+
+  it('preserves whitespaces in pre blocks', () => {
+    const html = `<pre>{
+  "foo": "bar"
+}</pre>`;
+    assertResult(html, '<p data-code=""><span data-code="">{\n  "foo": "bar"\n}</span></p>');
   });
 
   it('reports definition terms and definitions', () => {
     const html = '<dl><dt>A term</dt><dd>A definition</dd></dl>';
     assertResult(html, [
-      '<p><span data-dt="">A term</span></p>',
-      '<p><span data-dd="">A definition</span></p>'
+      '<p data-dt=""><span>A term</span></p>',
+      '<p data-dd=""><span>A definition</span></p>'
     ]);
   });
 
@@ -172,6 +179,22 @@ describe('The flattening algorithm', () => {
       '<p data-listtype="ol" data-level="2" data-listindex="1" data-hasbullet=""><span>2.1</span></p>',
       '<p data-listtype="ol" data-level="2" data-listindex="1"><span>2.2</span></p>',
       '<p data-listtype="ul" data-level="1" data-listindex="3" data-hasbullet=""><span>3.1</span></p>'
+    ]);
+  });
+
+  it('flattens an example', () => {
+    const html = '<div class="example"><div class="marker"><a class="self-link" href="#self">Example 1<span class="example-title">: Foo</div><p>Bar</p></div>';
+    assertResult(html, [
+      '<p data-example=""><span>Example 1</span><span>: Foo</span></p>',
+      '<p data-example=""><span>Bar</span></p>'
+    ]);
+  });
+
+  it('flattens a note', () => {
+    const html = '<div class="note"><div class="marker"><a class="self-link" href="#self">Note<span class="note-title">: Foo</div><p>Bar</p></div>';
+    assertResult(html, [
+      '<p data-note=""><span>Note</span><span>: Foo</span></p>',
+      '<p data-note=""><span>Bar</span></p>'
     ]);
   });
 });

@@ -12,16 +12,13 @@ import {
   InternalHyperlink,
   ExternalHyperlink,
   HeadingLevel,
-  Bookmark
+  Bookmark,
+  convertInchesToTwip
 } from 'docx';
 
 
 // Bookmark IDs that have already been created
 const bookmarks = {};
-
-// Last given instance ID for ordered lists
-let lastInstanceID = 1;
-
 
 export function convertBody(body, doc = {}) {
   const children = body.children;
@@ -138,19 +135,32 @@ function getOptionsFromAttributes(el, options = {}) {
   if (el.hasAttribute('data-bold')) {
     options.bold = true;
   }
-  if (el.hasAttribute('data-code')) {
-    if (options.hyperlink) {
-      options.style = 'CodeHyperlink';
-    }
-    else {
-      options.style = 'CodeInline';
-    }
-  }
+  // TODO: Some of the paragraph styles may be combined in HTML
+  // (e.g., a note may appear in a dd) but there is no way to combine
+  // styles in the docx. We do code in the end because code text would end up
+  // being justified otherwise, which isn't fantastic.
   if (el.hasAttribute('data-dt')) {
     options.style = 'Terms';
   }
   if (el.hasAttribute('data-dd')) {
     options.style = 'Definition';
+  }
+  if (el.hasAttribute('data-example')) {
+    options.style = 'Example';
+  }
+  if (el.hasAttribute('data-note')) {
+    options.style = 'Note';
+  }
+  if (el.hasAttribute('data-code')) {
+    if (options.hyperlink) {
+      options.style = 'CodeHyperlink';
+    }
+    else if (el.nodeName === 'P') {
+      options.style = 'Code';
+    }
+    else {
+      options.style = 'CodeInline';
+    }
   }
   if (el.hasAttribute('data-heading')) {
     const level = el.getAttribute('data-heading');
@@ -164,8 +174,16 @@ function getOptionsFromAttributes(el, options = {}) {
     }
   }
   if (el.hasAttribute('data-hasbullet')) {
+    // TODO: handle numbering
     options.bullet = {
       level: parseInt(el.getAttribute('data-level'), 10)
+    };
+  }
+  else if (el.hasAttribute('data-level')) {
+    // TODO: indentation may need to be adjusted
+    const level = parseInt(el.getAttribute('data-level'), 10);
+    options.indent = {
+      left: convertInchesToTwip(0.5 + (level - 1) * 0.25)
     };
   }
   return options;
@@ -225,10 +243,20 @@ function convertInline(el, options) {
   }
   else {
     // We're dealing with a <span> element
-    const textrun = {
-      text: el.textContent.replace(/\s+/g, ' '),
-      ...getOptionsFromAttributes(el, options)
-    };
-    return [new TextRun(textrun)];
+    const lines = el.textContent.split(/\n/);
+    const res = [];
+    let firstLine = true;
+    for (const line of lines) {
+      const textrun = {
+        text: line,
+        ...getOptionsFromAttributes(el, options)
+      };
+      if (!firstLine) {
+        textrun.break = 1;
+      }
+      res.push(new TextRun(textrun));
+      firstLine = false;
+    }
+    return res;
   }
 }
