@@ -8,7 +8,6 @@
  * - Handle images
  * - Handle <abbr>, <cite>, <q>
  * - Convert absolute links to self to internal links if some exist
- * - Add styles for definition lists and handle them.
  * - Add the TOC
  * - Add the ISO boilerplate text (Foreword, copyright)
  * - Add metadata to the .docx document such as creator, title, and description

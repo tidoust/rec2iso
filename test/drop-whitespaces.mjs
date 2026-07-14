@@ -74,4 +74,9 @@ describe('The non-significant whitespaces handler', () => {
     `;
     assertResult(html, `<p><strong>The <a>web</a> is used.</strong> This is good.</p>`);
   });
+
+  it('preserves empty img tags', () => {
+    const html = `<p><img src="foo.jpg" alt="Bar"></p>`;
+    assertResult(html, html);
+  });
 });

@@ -151,6 +151,9 @@ function getOptionsFromAttributes(el, options = {}) {
   if (el.hasAttribute('data-note')) {
     options.style = 'Note';
   }
+  if (el.hasAttribute('data-figcaption')) {
+    options.style = 'Figure Title';
+  }
   if (el.hasAttribute('data-code')) {
     if (options.hyperlink) {
       options.style = 'CodeHyperlink';

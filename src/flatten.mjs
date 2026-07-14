@@ -22,9 +22,7 @@ export function flattenDOM(element) {
     const span = document.createElement('span');
     span.textContent = text;
     for (const [key, value] of Object.entries(attrs)) {
-      if (value !== undefined && value !== false &&
-          key !== 'data-dt' && key !== 'data-dd' &&
-          key !== 'data-example' && key !== 'data-note') {
+      if (value !== undefined && value !== false) {
         span.setAttribute(key, '');
       }
     }
@@ -106,7 +104,8 @@ export function flattenDOM(element) {
   function processNode(node, context = {}) {
     const {
       inAnchorWithHref = false,
-      attrs = {},
+      blockAttrs = {},
+      inlineAttrs = {},
       nestedLevel = 0,
       listItemIndex = 0,
       listType = 'ul'
@@ -117,7 +116,7 @@ export function flattenDOM(element) {
       const text = node.textContent;
       if (!text) return [];
       log(`- text content: ${node.textContent.substring(0, 42)}`);
-      return [createSpan(text, attrs)];
+      return [createSpan(text, inlineAttrs)];
     }
 
     // Skip non-text, non-element nodes
@@ -151,49 +150,52 @@ export function flattenDOM(element) {
       return [{ type: 'EMPTY_ANCHOR_ID', id: node.getAttribute('id') }];
     }
 
+    // Skip complex structures for now
+    const complexTags = ['table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th',
+                         'img', 'svg', 'canvas', 'video', 'audio',
+                         'iframe', 'object', 'embed', 'math'];
+    if (complexTags.includes(nodeName)) {
+      log(`- todo: ${nodeName}`);
+      const p = document.createElement('p');
+      p.appendChild(createSpan(`TODO: ${nodeName} content`, inlineAttrs));
+      return wrapWithId([p], elementId);
+    }
+
     // Skip empty elements
     if (isEmpty(node)) {
       log(`- skip empty element`);
       return [];
     }
 
-    // Skip complex structures for now
-    const complexTags = ['table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th',
-                        'figure', 'figcaption', 'img', 'svg', 'canvas', 'video',
-                        'audio', 'iframe', 'object', 'embed', 'math'];
-    if (complexTags.includes(nodeName)) {
-      log(`- todo: ${nodeName}`);
-      const p = document.createElement('p');
-      p.appendChild(createSpan(`TODO: ${nodeName} content`, attrs));
-      return wrapWithId([p], elementId);
-    }
-
     // Build new attribute context
-    const newAttrs = { ...attrs };
+    const newBlockAttrs = { ...blockAttrs };
+    const newInlineAttrs = { ...inlineAttrs };
     let newNestedLevel = nestedLevel;
     let newListItemIndex = listItemIndex;
     let newListType = listType;
 
     // Apply formatting rules (12-16, 19-21)
     switch (nodeName) {
-      case 'sub': newAttrs['data-subscript'] = true; break;
-      case 'sup': newAttrs['data-superscript'] = true; break;
+      case 'sub': newInlineAttrs['data-subscript'] = true; break;
+      case 'sup': newInlineAttrs['data-superscript'] = true; break;
       case 'i':
-      case 'em': newAttrs['data-italics'] = true; break;
+      case 'em': newInlineAttrs['data-italics'] = true; break;
       case 'b':
       case 'strong':
-      case 'dfn': newAttrs['data-bold'] = true; break;
-      case 'code':
-      case 'pre': newAttrs['data-code'] = true; break;
-      case 'dt': newAttrs['data-dt'] = true; break;
-      case 'dd': newAttrs['data-dd'] = true; break;
+      case 'dfn': newInlineAttrs['data-bold'] = true; break;
+      case 'code': newInlineAttrs['data-code'] = true; break;
+      case 'pre': newBlockAttrs['data-code'] = true; break;
+      case 'dt': newBlockAttrs['data-dt'] = true; break;
+      case 'dd': newBlockAttrs['data-dd'] = true; break;
+      case 'figure': newBlockAttrs['data-figure'] = true; break;
+      case 'figcaption': newBlockAttrs['data-figcaption'] = true; break;
     }
 
     if ([...node.classList].includes('example')) {
-      newAttrs['data-example'] = true;
+      newBlockAttrs['data-example'] = true;
     }
     if ([...node.classList].includes('note')) {
-      newAttrs['data-note'] = true;
+      newBlockAttrs['data-note'] = true;
     }
 
     // Check for heading
@@ -220,7 +222,8 @@ export function flattenDOM(element) {
         for (const child of node.childNodes) {
           children.push(...processNode(child, {
             ...context,
-            attrs: newAttrs,
+            blockAttrs: newBlockAttrs,
+            inlineAttrs: newInlineAttrs,
             nestedLevel,
             listItemIndex,
             listType
@@ -242,7 +245,8 @@ export function flattenDOM(element) {
         children.push(...processNode(child, {
           ...context,
           inAnchorWithHref: true,
-          attrs: newAttrs,
+          blockAttrs: newBlockAttrs,
+          inlineAttrs: newInlineAttrs,
           nestedLevel,
           listItemIndex,
           listType
@@ -264,7 +268,8 @@ export function flattenDOM(element) {
     for (const child of node.childNodes) {
       children.push(...processNode(child, {
         inAnchorWithHref,
-        attrs: newAttrs,
+        blockAttrs: newBlockAttrs,
+        inlineAttrs: newInlineAttrs,
         nestedLevel: newNestedLevel,
         listItemIndex: newListItemIndex,
         listType: newListType
@@ -274,7 +279,8 @@ export function flattenDOM(element) {
     // Determine if this should create a paragraph
     const blockTags = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'dt', 'dd', 'pre',
                        'div', 'section', 'article', 'header', 'footer', 'aside', 'main',
-                       'nav', 'blockquote', 'address', 'body', 'html'];
+                       'nav', 'blockquote', 'address', 'body', 'html',
+                       'figure', 'figcaption'];
 
     const ids = children.filter(child => child.type === 'EMPTY_ANCHOR_ID');
     let result = children.filter(child => !child.type);
@@ -306,20 +312,10 @@ export function flattenDOM(element) {
             p.setAttribute('data-listindex', newListItemIndex);
           }
         }
-        if (newAttrs['data-code']) {
-          p.setAttribute('data-code', '');
-        }
-        if (newAttrs['data-dt']) {
-          p.setAttribute('data-dt', '');
-        }
-        if (newAttrs['data-dd']) {
-          p.setAttribute('data-dd', '');
-        }
-        if (newAttrs['data-example']) {
-          p.setAttribute('data-example', '');
-        }
-        if (newAttrs['data-note']) {
-          p.setAttribute('data-note', '');
+        for (const [key, value] of Object.entries(newBlockAttrs)) {
+          if (value !== undefined && value !== false) {
+            p.setAttribute(key, '');
+          }
         }
         flatChildren.push(p);
       }
