@@ -13,7 +13,8 @@ import {
   ExternalHyperlink,
   HeadingLevel,
   Bookmark,
-  convertInchesToTwip
+  convertInchesToTwip,
+  Table, TableRow, TableCell, WidthType, AlignmentType
 } from 'docx';
 
 
@@ -194,6 +195,48 @@ function getOptionsFromAttributes(el, options = {}) {
 
 function convertBlock(el) {
   const options = getOptionsFromAttributes(el);
+  if (el.nodeName === 'TABLE') {
+    const table = {
+      alignment: AlignmentType.CENTER,
+      rows: [...el.childNodes]
+        .map(child => convertBlock(child, options))
+        .flat()
+        .filter(child => child instanceof TableRow),
+      width: {
+        size: 100,
+        type: WidthType.PERCENTAGE,
+      },
+      ...options
+    };
+    return new Table(table);
+  }
+  if (el.nodeName === 'TR') {
+    const row = {
+      children: [...el.childNodes]
+        .map(child => convertBlock(child, options))
+        .flat()
+        .filter(child => child instanceof TableCell),
+      ...options
+    };
+    if (el.hasAttribute('data-header')) {
+      row.tableHeader = true;
+    }
+    return new TableRow(row);
+  }
+  if (el.nodeName === 'TD') {
+    const cell = {
+      children: [...el.childNodes]
+        .map(child => convertBlock(child, options))
+        .flat(),
+      width: {
+        size: 100,
+        type: WidthType.PERCENTAGE
+      },
+      ...options
+    };
+    return new TableCell(cell);
+  }
+  
   const para = {
     children: [...el.childNodes]
       .map(child => convertInline(child, options))

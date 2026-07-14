@@ -4,7 +4,6 @@
  *
  * TODO:
  * - Handle ordered lists
- * - Handle tables
  * - Handle images
  * - Handle <abbr>, <cite>, <q>
  * - Convert absolute links to self to internal links if some exist

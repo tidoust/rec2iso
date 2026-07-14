@@ -212,5 +212,21 @@ describe('The flattening algorithm', () => {
       '<p data-figure=""><a id="roles"><span>TODO: img content</span></a></p>',
       '<p data-figure="" data-figcaption=""><span>Figure 1 Title</span></p>'
     ]);
-  })
+  });
+
+  it('converts a simple table', () => {
+    const html = '<table>' +
+      '<thead><tr><td>Header 1</td><td>Header 2</td></tr></thead>' +
+      '<tbody>' +
+        '<tr><td>Row 1, cell 1</td><td>Row 1, cell 2</td></tr>' +
+        '<tr><td>Row 2, cell 1</td><td>Row 2, cell 2</td></tr>' +
+      '</tbody>' +
+    '</table>';
+    assertResult(html,
+      '<table>' +
+        '<tr data-header=""><td><p><span>Header 1</span></p></td><td><p><span>Header 2</span></p></td></tr>' +
+        '<tr><td><p><span>Row 1, cell 1</span></p></td><td><p><span>Row 1, cell 2</span></p></td></tr>' +
+        '<tr><td><p><span>Row 2, cell 1</span></p></td><td><p><span>Row 2, cell 2</span></p></td></tr>' +
+      '</table>');
+  });
 });

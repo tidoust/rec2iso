@@ -150,8 +150,15 @@ export function flattenDOM(element) {
       return [{ type: 'EMPTY_ANCHOR_ID', id: node.getAttribute('id') }];
     }
 
+    // Skip content that can be ignored
+    const skippableTags = ['caption'];
+    if (skippableTags.includes(nodeName)) {
+      log(`- skip skippable tag ${nodeName}`);
+      return [];
+    }
+
     // Skip complex structures for now
-    const complexTags = ['table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th',
+    const complexTags = ['tfoot',
                          'img', 'svg', 'canvas', 'video', 'audio',
                          'iframe', 'object', 'embed', 'math'];
     if (complexTags.includes(nodeName)) {
@@ -201,6 +208,54 @@ export function flattenDOM(element) {
     // Check for heading
     const headingMatch = nodeName.match(/^h([1-6])$/);
     const headingLevel = headingMatch ? parseInt(headingMatch[1], 10) : null;
+
+    function processAndAddChildren(childNodes, element) {
+      const children = [];
+      for (const child of childNodes) {
+        children.push(...processNode(child, {
+          inAnchorWithHref,
+          blockAttrs: newBlockAttrs,
+          inlineAttrs: newInlineAttrs,
+          nestedLevel: newNestedLevel,
+          listItemIndex: newListItemIndex,
+          listType: newListType
+        }));
+      }
+      const ids = children.filter(child => child.type === 'EMPTY_ANCHOR_ID');
+      let result = children.filter(child => !child.type);
+      for (const id of ids) {
+        result = wrapWithId(result, id);
+      }
+      if (element) {
+        for (const child of result) {
+          element.appendChild(child);
+        }
+        return wrapWithId([element], elementId);
+      }
+      else {
+        return wrapWithId(result, elementId);
+      }
+    }
+
+    // Handle tables
+    if (nodeName === 'table') {
+      const table = document.createElement('table');
+      return processAndAddChildren(node.childNodes, table);
+    }
+    if (nodeName === 'thead') {
+      newBlockAttrs['data-header'] = true;
+      return processAndAddChildren(node.childNodes, null);
+    }
+    if (nodeName === 'tbody') {
+      return processAndAddChildren(node.childNodes, null);
+    }
+    if (nodeName === 'tr') {
+      const row = document.createElement('tr');
+      if (newBlockAttrs['data-header']) {
+        row.setAttribute('data-header', '');
+      }
+      return processAndAddChildren(node.childNodes, row);
+    }
 
     // Handle list items
     if (nodeName === 'li') {
@@ -264,30 +319,13 @@ export function flattenDOM(element) {
     }
 
     // Process children
-    let children = [];
-    for (const child of node.childNodes) {
-      children.push(...processNode(child, {
-        inAnchorWithHref,
-        blockAttrs: newBlockAttrs,
-        inlineAttrs: newInlineAttrs,
-        nestedLevel: newNestedLevel,
-        listItemIndex: newListItemIndex,
-        listType: newListType
-      }));
-    }
+    const result = processAndAddChildren(node.childNodes, null);
 
     // Determine if this should create a paragraph
     const blockTags = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'dt', 'dd', 'pre',
                        'div', 'section', 'article', 'header', 'footer', 'aside', 'main',
                        'nav', 'blockquote', 'address', 'body', 'html',
-                       'figure', 'figcaption'];
-
-    const ids = children.filter(child => child.type === 'EMPTY_ANCHOR_ID');
-    let result = children.filter(child => !child.type);
-    for (const id of ids) {
-      result = wrapWithId(result, id);
-    }
-
+                       'figure', 'figcaption', 'th', 'td'];
     const shouldCreateParagraph = blockTags.includes(nodeName);
     if (shouldCreateParagraph) {
       // Processed children may contain a bunch of <p> elements, mixed with
@@ -313,7 +351,8 @@ export function flattenDOM(element) {
           }
         }
         for (const [key, value] of Object.entries(newBlockAttrs)) {
-          if (value !== undefined && value !== false) {
+          if (value !== undefined && value !== false &&
+              key !== 'data-header') {
             p.setAttribute(key, '');
           }
         }
@@ -322,7 +361,8 @@ export function flattenDOM(element) {
 
       let currentParagraph = null;
       for (const child of result) {
-        if (child.nodeName.toLowerCase() === 'p') {
+        const childName = child.nodeName.toLowerCase();
+        if (['p', 'table', 'tr', 'td'].includes(childName)) {
           if (currentParagraph) {
             addParagraph(currentParagraph);
             currentParagraph = null;
@@ -354,6 +394,15 @@ export function flattenDOM(element) {
         child.setAttribute('data-hasbullet', '');
       }
       log(`- paragraphs created`);
+
+      if (nodeName === 'th' || nodeName === 'td') {
+        log(`- wrap them in a table cell`);
+        const cell = document.createElement('td');
+        for (const child of flatChildren) {
+          cell.appendChild(child);
+        }
+        return wrapWithId([cell], elementId);
+      }
       return wrapWithId(flatChildren, elementId);
     }
 
