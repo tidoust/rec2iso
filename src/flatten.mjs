@@ -22,9 +22,7 @@ export function flattenDOM(element) {
     const span = document.createElement('span');
     span.textContent = text;
     for (const [key, value] of Object.entries(attrs)) {
-      if (value !== undefined && value !== false &&
-          key !== 'data-dt' && key !== 'data-dd' &&
-          key !== 'data-example' && key !== 'data-note') {
+      if (value !== undefined && value !== false) {
         span.setAttribute(key, '');
       }
     }
@@ -85,13 +83,23 @@ export function flattenDOM(element) {
   }
 
   /**
-   * Check if a node is empty (no text content and no children with content)
+   * Check if a node is empty (no text content and no children with content),
+   * whereas it should have content
    */
   function isEmpty(node) {
+    const emptyElements = [
+      'audio', 'br', 'canvas', 'embed', 'hr', 'iframe', 'img', 'picture',
+      'video'
+    ];
     if (node.nodeType === Node.TEXT_NODE) {
       return !node.textContent;
     }
     if (node.nodeType !== Node.ELEMENT_NODE) return true;
+
+    // Check if element is expected to be empty
+    if (emptyElements.includes(node.nodeName.toLowerCase())) {
+      return false;
+    }
     
     // Check if element has any non-empty children
     for (const child of node.childNodes) {
@@ -106,7 +114,8 @@ export function flattenDOM(element) {
   function processNode(node, context = {}) {
     const {
       inAnchorWithHref = false,
-      attrs = {},
+      blockAttrs = {},
+      inlineAttrs = {},
       nestedLevel = 0,
       listItemIndex = 0,
       listType = 'ul'
@@ -117,7 +126,7 @@ export function flattenDOM(element) {
       const text = node.textContent;
       if (!text) return [];
       log(`- text content: ${node.textContent.substring(0, 42)}`);
-      return [createSpan(text, attrs)];
+      return [createSpan(text, inlineAttrs)];
     }
 
     // Skip non-text, non-element nodes
@@ -151,54 +160,125 @@ export function flattenDOM(element) {
       return [{ type: 'EMPTY_ANCHOR_ID', id: node.getAttribute('id') }];
     }
 
+    // Skip content that can be ignored
+    const skippableTags = ['caption'];
+    if (skippableTags.includes(nodeName)) {
+      log(`- skip skippable tag ${nodeName}`);
+      return [];
+    }
+
+    // Skip complex structures for now
+    const complexTags = [
+      'tfoot', 'svg', 'canvas', 'video', 'audio',
+      'iframe', 'object', 'embed', 'math'
+    ];
+    if (complexTags.includes(nodeName)) {
+      log(`- todo: ${nodeName}`);
+      const p = document.createElement('p');
+      p.appendChild(createSpan(`TODO: ${nodeName} content`, inlineAttrs));
+      return wrapWithId([p], elementId);
+    }
+
     // Skip empty elements
     if (isEmpty(node)) {
       log(`- skip empty element`);
       return [];
     }
 
-    // Skip complex structures for now
-    const complexTags = ['table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th',
-                        'figure', 'figcaption', 'img', 'svg', 'canvas', 'video',
-                        'audio', 'iframe', 'object', 'embed', 'math'];
-    if (complexTags.includes(nodeName)) {
-      log(`- todo: ${nodeName}`);
-      const p = document.createElement('p');
-      p.appendChild(createSpan(`TODO: ${nodeName} content`, attrs));
-      return wrapWithId([p], elementId);
-    }
-
     // Build new attribute context
-    const newAttrs = { ...attrs };
+    const newBlockAttrs = { ...blockAttrs };
+    const newInlineAttrs = { ...inlineAttrs };
     let newNestedLevel = nestedLevel;
     let newListItemIndex = listItemIndex;
     let newListType = listType;
 
     // Apply formatting rules (12-16, 19-21)
     switch (nodeName) {
-      case 'sub': newAttrs['data-subscript'] = true; break;
-      case 'sup': newAttrs['data-superscript'] = true; break;
+      case 'sub': newInlineAttrs['data-subscript'] = true; break;
+      case 'sup': newInlineAttrs['data-superscript'] = true; break;
       case 'i':
-      case 'em': newAttrs['data-italics'] = true; break;
+      case 'em': newInlineAttrs['data-italics'] = true; break;
       case 'b':
       case 'strong':
-      case 'dfn': newAttrs['data-bold'] = true; break;
-      case 'code':
-      case 'pre': newAttrs['data-code'] = true; break;
-      case 'dt': newAttrs['data-dt'] = true; break;
-      case 'dd': newAttrs['data-dd'] = true; break;
+      case 'dfn': newInlineAttrs['data-bold'] = true; break;
+      case 'code': newInlineAttrs['data-code'] = true; break;
+      case 'pre': newBlockAttrs['data-code'] = true; break;
+      case 'dt': newBlockAttrs['data-dt'] = true; break;
+      case 'dd': newBlockAttrs['data-dd'] = true; break;
+      case 'figure': newBlockAttrs['data-figure'] = true; break;
+      case 'figcaption': newBlockAttrs['data-figcaption'] = true; break;
     }
 
     if ([...node.classList].includes('example')) {
-      newAttrs['data-example'] = true;
+      newBlockAttrs['data-example'] = true;
     }
     if ([...node.classList].includes('note')) {
-      newAttrs['data-note'] = true;
+      newBlockAttrs['data-note'] = true;
     }
 
     // Check for heading
     const headingMatch = nodeName.match(/^h([1-6])$/);
     const headingLevel = headingMatch ? parseInt(headingMatch[1], 10) : null;
+
+    function processAndAddChildren(childNodes, element) {
+      const children = [];
+      for (const child of childNodes) {
+        children.push(...processNode(child, {
+          inAnchorWithHref,
+          blockAttrs: newBlockAttrs,
+          inlineAttrs: newInlineAttrs,
+          nestedLevel: newNestedLevel,
+          listItemIndex: newListItemIndex,
+          listType: newListType
+        }));
+      }
+      const ids = children.filter(child => child.type === 'EMPTY_ANCHOR_ID');
+      let result = children.filter(child => !child.type);
+      for (const id of ids) {
+        result = wrapWithId(result, id);
+      }
+      if (element) {
+        for (const child of result) {
+          element.appendChild(child);
+        }
+        return wrapWithId([element], elementId);
+      }
+      else {
+        return wrapWithId(result, elementId);
+      }
+    }
+
+    // Handle tables
+    if (nodeName === 'table') {
+      const table = document.createElement('table');
+      return processAndAddChildren(node.childNodes, table);
+    }
+    if (nodeName === 'thead') {
+      newBlockAttrs['data-header'] = true;
+      return processAndAddChildren(node.childNodes, null);
+    }
+    if (nodeName === 'tbody') {
+      return processAndAddChildren(node.childNodes, null);
+    }
+    if (nodeName === 'tr') {
+      const row = document.createElement('tr');
+      if (newBlockAttrs['data-header']) {
+        row.setAttribute('data-header', '');
+      }
+      return processAndAddChildren(node.childNodes, row);
+    }
+
+    // Handle images
+    if (nodeName === 'img') {
+      const img = document.createElement('img');
+      if (node.hasAttribute('src')) {
+        img.setAttribute('src', node.getAttribute('src'));
+      }
+      if (node.hasAttribute('alt')) {
+        img.setAttribute('alt', node.getAttribute('alt'));
+      }
+      return wrapWithId([img], elementId);
+    }
 
     // Handle list items
     if (nodeName === 'li') {
@@ -220,7 +300,8 @@ export function flattenDOM(element) {
         for (const child of node.childNodes) {
           children.push(...processNode(child, {
             ...context,
-            attrs: newAttrs,
+            blockAttrs: newBlockAttrs,
+            inlineAttrs: newInlineAttrs,
             nestedLevel,
             listItemIndex,
             listType
@@ -242,7 +323,8 @@ export function flattenDOM(element) {
         children.push(...processNode(child, {
           ...context,
           inAnchorWithHref: true,
-          attrs: newAttrs,
+          blockAttrs: newBlockAttrs,
+          inlineAttrs: newInlineAttrs,
           nestedLevel,
           listItemIndex,
           listType
@@ -260,28 +342,13 @@ export function flattenDOM(element) {
     }
 
     // Process children
-    let children = [];
-    for (const child of node.childNodes) {
-      children.push(...processNode(child, {
-        inAnchorWithHref,
-        attrs: newAttrs,
-        nestedLevel: newNestedLevel,
-        listItemIndex: newListItemIndex,
-        listType: newListType
-      }));
-    }
+    const result = processAndAddChildren(node.childNodes, null);
 
     // Determine if this should create a paragraph
     const blockTags = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'dt', 'dd', 'pre',
                        'div', 'section', 'article', 'header', 'footer', 'aside', 'main',
-                       'nav', 'blockquote', 'address', 'body', 'html'];
-
-    const ids = children.filter(child => child.type === 'EMPTY_ANCHOR_ID');
-    let result = children.filter(child => !child.type);
-    for (const id of ids) {
-      result = wrapWithId(result, id);
-    }
-
+                       'nav', 'blockquote', 'address', 'body', 'html',
+                       'figure', 'figcaption', 'th', 'td'];
     const shouldCreateParagraph = blockTags.includes(nodeName);
     if (shouldCreateParagraph) {
       // Processed children may contain a bunch of <p> elements, mixed with
@@ -306,27 +373,19 @@ export function flattenDOM(element) {
             p.setAttribute('data-listindex', newListItemIndex);
           }
         }
-        if (newAttrs['data-code']) {
-          p.setAttribute('data-code', '');
-        }
-        if (newAttrs['data-dt']) {
-          p.setAttribute('data-dt', '');
-        }
-        if (newAttrs['data-dd']) {
-          p.setAttribute('data-dd', '');
-        }
-        if (newAttrs['data-example']) {
-          p.setAttribute('data-example', '');
-        }
-        if (newAttrs['data-note']) {
-          p.setAttribute('data-note', '');
+        for (const [key, value] of Object.entries(newBlockAttrs)) {
+          if (value !== undefined && value !== false &&
+              key !== 'data-header') {
+            p.setAttribute(key, '');
+          }
         }
         flatChildren.push(p);
       }
 
       let currentParagraph = null;
       for (const child of result) {
-        if (child.nodeName.toLowerCase() === 'p') {
+        const childName = child.nodeName.toLowerCase();
+        if (['p', 'table', 'tr', 'td'].includes(childName)) {
           if (currentParagraph) {
             addParagraph(currentParagraph);
             currentParagraph = null;
@@ -358,6 +417,15 @@ export function flattenDOM(element) {
         child.setAttribute('data-hasbullet', '');
       }
       log(`- paragraphs created`);
+
+      if (nodeName === 'th' || nodeName === 'td') {
+        log(`- wrap them in a table cell`);
+        const cell = document.createElement('td');
+        for (const child of flatChildren) {
+          cell.appendChild(child);
+        }
+        return wrapWithId([cell], elementId);
+      }
       return wrapWithId(flatChildren, elementId);
     }
 

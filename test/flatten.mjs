@@ -77,7 +77,7 @@ describe('The flattening algorithm', () => {
     const html = '<div><p>Some <code>code</code>.</p><pre>And a pre</pre></div>';
     assertResult(html, [
       '<p><span>Some </span><span data-code="">code</span><span>.</span></p>',
-      '<p data-code=""><span data-code="">And a pre</span></p>'
+      '<p data-code=""><span>And a pre</span></p>'
     ]);
   });
 
@@ -85,7 +85,7 @@ describe('The flattening algorithm', () => {
     const html = `<pre>{
   "foo": "bar"
 }</pre>`;
-    assertResult(html, '<p data-code=""><span data-code="">{\n  "foo": "bar"\n}</span></p>');
+    assertResult(html, '<p data-code=""><span>{\n  "foo": "bar"\n}</span></p>');
   });
 
   it('reports definition terms and definitions', () => {
@@ -196,5 +196,37 @@ describe('The flattening algorithm', () => {
       '<p data-note=""><span>Note</span><span>: Foo</span></p>',
       '<p data-note=""><span>Bar</span></p>'
     ]);
+  });
+
+  it('flags figures', () => {
+    const html = '<figure><p>A figure</p><figcaption>Figure 1 - A figure</figcaption></figure>';
+    assertResult(html, [
+      '<p data-figure=""><span>A figure</span></p>',
+      '<p data-figure="" data-figcaption=""><span>Figure 1 - A figure</span></p>'
+    ]);
+  });
+
+  it('flattens an image', () => {
+    const html = '<figure id="roles"><img alt="diagram" src="foobar.jpg"><figcaption>Figure 1 Title</figcaption></figure>';
+    assertResult(html, [
+      '<p data-figure=""><a id="roles"><img src="foobar.jpg" alt="diagram"></a></p>',
+      '<p data-figure="" data-figcaption=""><span>Figure 1 Title</span></p>'
+    ]);
+  });
+
+  it('converts a simple table', () => {
+    const html = '<table>' +
+      '<thead><tr><td>Header 1</td><td>Header 2</td></tr></thead>' +
+      '<tbody>' +
+        '<tr><td>Row 1, cell 1</td><td>Row 1, cell 2</td></tr>' +
+        '<tr><td>Row 2, cell 1</td><td>Row 2, cell 2</td></tr>' +
+      '</tbody>' +
+    '</table>';
+    assertResult(html,
+      '<table>' +
+        '<tr data-header=""><td><p><span>Header 1</span></p></td><td><p><span>Header 2</span></p></td></tr>' +
+        '<tr><td><p><span>Row 1, cell 1</span></p></td><td><p><span>Row 1, cell 2</span></p></td></tr>' +
+        '<tr><td><p><span>Row 2, cell 1</span></p></td><td><p><span>Row 2, cell 2</span></p></td></tr>' +
+      '</table>');
   });
 });

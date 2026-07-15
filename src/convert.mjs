@@ -3,6 +3,8 @@
  * input and converts it to a list of docx Paragraph
  ***********************************************************/
 
+import fs from 'node:fs';
+import { imageSize } from 'image-size';
 import { appendRootNodes } from './append-root-nodes.mjs';
 import { flattenDOM } from './flatten.mjs';
 import { copyOptions } from './copy-options.mjs';
@@ -13,15 +15,32 @@ import {
   ExternalHyperlink,
   HeadingLevel,
   Bookmark,
-  convertInchesToTwip
+  convertInchesToTwip,
+  Table, TableRow, TableCell, WidthType, AlignmentType,
+  ImageRun
 } from 'docx';
 
 
 // Bookmark IDs that have already been created
 const bookmarks = {};
+const images = {};
 
-export function convertBody(body, doc = {}) {
+export async function convertBody(body, doc = {}) {
   const children = body.children;
+
+  const imgs = [...body.querySelectorAll('img')];
+  for (const img of imgs) {
+    if (images[img.src]) {
+      continue;
+    }
+    if (img.src.startsWith('file://')) {
+      images[img.src] = fs.readFileSync(img.src.replace(/^file:\/\//, ''));
+    }
+    else {
+      const response = await fetch(img.src);
+      images[img.src] = Buffer.from(await response.arrayBuffer());
+    }
+  }
 
   for (const child of children) {
     if (child.className.includes('head')) {
@@ -151,6 +170,12 @@ function getOptionsFromAttributes(el, options = {}) {
   if (el.hasAttribute('data-note')) {
     options.style = 'Note';
   }
+  if (el.hasAttribute('data-figure')) {
+    options.style = 'Figure Title';
+  }
+  if (el.hasAttribute('data-figcaption')) {
+    options.style = 'Figure Title';
+  }
   if (el.hasAttribute('data-code')) {
     if (options.hyperlink) {
       options.style = 'CodeHyperlink';
@@ -191,6 +216,48 @@ function getOptionsFromAttributes(el, options = {}) {
 
 function convertBlock(el) {
   const options = getOptionsFromAttributes(el);
+  if (el.nodeName === 'TABLE') {
+    const table = {
+      alignment: AlignmentType.CENTER,
+      rows: [...el.childNodes]
+        .map(child => convertBlock(child, options))
+        .flat()
+        .filter(child => child instanceof TableRow),
+      width: {
+        size: 100,
+        type: WidthType.PERCENTAGE,
+      },
+      ...options
+    };
+    return new Table(table);
+  }
+  if (el.nodeName === 'TR') {
+    const row = {
+      children: [...el.childNodes]
+        .map(child => convertBlock(child, options))
+        .flat()
+        .filter(child => child instanceof TableCell),
+      ...options
+    };
+    if (el.hasAttribute('data-header')) {
+      row.tableHeader = true;
+    }
+    return new TableRow(row);
+  }
+  if (el.nodeName === 'TD') {
+    const cell = {
+      children: [...el.childNodes]
+        .map(child => convertBlock(child, options))
+        .flat(),
+      width: {
+        size: 100,
+        type: WidthType.PERCENTAGE
+      },
+      ...options
+    };
+    return new TableCell(cell);
+  }
+  
   const para = {
     children: [...el.childNodes]
       .map(child => convertInline(child, options))
@@ -240,6 +307,39 @@ function convertInline(el, options) {
         })];
       }
     }
+  }
+  else if (tagName === 'img') {
+    // We're dealing with an <img> element
+    const image = images[el.src];
+    const dimensions = imageSize(image);
+    const ratio = dimensions.width / dimensions.height;
+    if (dimensions.width > 500) {
+      dimensions.width = 500;
+      dimensions.height = dimensions.width / ratio;
+    }
+    if (dimensions.height > 500) {
+      dimensions.height = 500;
+      dimensions.width = dimensions.height * ratio;
+    }
+    const imagerun = {
+      type: el.src.match(/\.([^\.\/]+)$/)[1],
+      data: image,
+      transformation: {
+        width: dimensions.width,
+        height: dimensions.height
+      },
+      fallback: {}
+    };
+    if (el.hasAttribute('alt')) {
+      // Docx has a "name", "title", and "description".
+      // Not sure what the nuance is between these but all are required
+      imagerun.altText = {
+        name: el.getAttribute('alt'),
+        title: el.getAttribute('alt'),
+        description: el.getAttribute('alt')
+      };
+    }
+    return [new ImageRun(imagerun)];
   }
   else {
     // We're dealing with a <span> element

@@ -4,11 +4,8 @@
  *
  * TODO:
  * - Handle ordered lists
- * - Handle tables
- * - Handle images
  * - Handle <abbr>, <cite>, <q>
  * - Convert absolute links to self to internal links if some exist
- * - Add styles for definition lists and handle them.
  * - Add the TOC
  * - Add the ISO boilerplate text (Foreword, copyright)
  * - Add metadata to the .docx document such as creator, title, and description
@@ -42,15 +39,15 @@ const url = `https://www.w3.org/TR/${shortname}/`;
 
 // Load W3C Recommendation
 // (file version in comment is for debugging)
-//const dom = await JSDOM.fromURL(url);
-const dom = await JSDOM.fromFile(`${shortname}.html`);
+const dom = await JSDOM.fromURL(url);
+//const dom = await JSDOM.fromFile(`${shortname}.html`);
 
 // Drop non-significant whitespaces to ease conversion
 dropNonSignificantWhitespaces(dom.window.document.body);
 
 // Convert the W3C Recommendation
 const doc = createDocxParameters();
-convertBody(dom.window.document.body, doc);
+await convertBody(dom.window.document.body, doc);
 
 // Serialize the .docx document
 const docx = new Document(doc);

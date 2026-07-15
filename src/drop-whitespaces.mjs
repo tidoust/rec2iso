@@ -7,6 +7,9 @@ export function dropNonSignificantWhitespaces(root) {
     'rt', 'rp', 'data', 'time', 'code', 'var', 'samp', 'kbd', 'sub', 'sup',
     'i', 'b', 'u', 'mark', 'bdi', 'bdo', 'span', 'br', 'wbr'
   ];
+  const emptyElements = [
+    'audio', 'br', 'canvas', 'embed', 'hr', 'iframe', 'img', 'picture', 'video'
+  ];
   const Node = { ELEMENT_NODE: 1, TEXT_NODE: 3 };
 
   /**
@@ -103,7 +106,8 @@ export function dropNonSignificantWhitespaces(root) {
       walk(child);
     }
 
-    if ([...node.childNodes].every(child => child._remove)) {
+    if (!emptyElements.includes(nodeName) &&
+        [...node.childNodes].every(child => child._remove)) {
       if (!node._remove) {
         node._remove = true;
         updatesMade += 1;
