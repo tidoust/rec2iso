@@ -83,13 +83,23 @@ export function flattenDOM(element) {
   }
 
   /**
-   * Check if a node is empty (no text content and no children with content)
+   * Check if a node is empty (no text content and no children with content),
+   * whereas it should have content
    */
   function isEmpty(node) {
+    const emptyElements = [
+      'audio', 'br', 'canvas', 'embed', 'hr', 'iframe', 'img', 'picture',
+      'video'
+    ];
     if (node.nodeType === Node.TEXT_NODE) {
       return !node.textContent;
     }
     if (node.nodeType !== Node.ELEMENT_NODE) return true;
+
+    // Check if element is expected to be empty
+    if (emptyElements.includes(node.nodeName.toLowerCase())) {
+      return false;
+    }
     
     // Check if element has any non-empty children
     for (const child of node.childNodes) {
@@ -158,9 +168,10 @@ export function flattenDOM(element) {
     }
 
     // Skip complex structures for now
-    const complexTags = ['tfoot',
-                         'img', 'svg', 'canvas', 'video', 'audio',
-                         'iframe', 'object', 'embed', 'math'];
+    const complexTags = [
+      'tfoot', 'svg', 'canvas', 'video', 'audio',
+      'iframe', 'object', 'embed', 'math'
+    ];
     if (complexTags.includes(nodeName)) {
       log(`- todo: ${nodeName}`);
       const p = document.createElement('p');
@@ -255,6 +266,18 @@ export function flattenDOM(element) {
         row.setAttribute('data-header', '');
       }
       return processAndAddChildren(node.childNodes, row);
+    }
+
+    // Handle images
+    if (nodeName === 'img') {
+      const img = document.createElement('img');
+      if (node.hasAttribute('src')) {
+        img.setAttribute('src', node.getAttribute('src'));
+      }
+      if (node.hasAttribute('alt')) {
+        img.setAttribute('alt', node.getAttribute('alt'));
+      }
+      return wrapWithId([img], elementId);
     }
 
     // Handle list items

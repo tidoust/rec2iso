@@ -206,10 +206,10 @@ describe('The flattening algorithm', () => {
     ]);
   });
 
-  it('reports an image within a figure as TODO', () => {
-    const html = '<figure id="roles"><img alt="diagram"><figcaption>Figure 1 Title</figcaption></figure>';
+  it('flattens an image', () => {
+    const html = '<figure id="roles"><img alt="diagram" src="foobar.jpg"><figcaption>Figure 1 Title</figcaption></figure>';
     assertResult(html, [
-      '<p data-figure=""><a id="roles"><span>TODO: img content</span></a></p>',
+      '<p data-figure=""><a id="roles"><img src="foobar.jpg" alt="diagram"></a></p>',
       '<p data-figure="" data-figcaption=""><span>Figure 1 Title</span></p>'
     ]);
   });
