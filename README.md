@@ -63,6 +63,7 @@ Main known limitations are:
 - **ISO preamble pages** (Foreword, copyright) are not created. These pages can easily be added afterwards as they mostly contain boilerplate text.
 - The **table of contents** is missing.
 - **Section numbers** are copied as-is and are not *real* section numbers. No attempt is being made at re-numbering sections either.
+- **Indentations** are only roughly correct, in particular for nested content.
 
 Various improvements may be made to the conversion process as well. For example, abbreviations are not currently handled in any specific way.
 
