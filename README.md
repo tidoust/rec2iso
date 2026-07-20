@@ -76,7 +76,7 @@ By definition, conversion cannot handle interactive HTML content, which cannot b
 
 ### Known deviations from ISO requirements
 
-- ISO forbids **hanging paragraphs** in sections. W3C specs use them extensively. No attempt is being made at creating a sub-heading to wrap them during the conversion.
+- ISO forbids **[hanging paragraphs](https://helpdesk-docs.iso.org/article/714-hanging-paragraph)** in sections. W3C specs use them extensively. No attempt is being made at creating a sub-heading to wrap them during the conversion.
 - **References** in W3C specs appear as an appendix using a specific format. ISO lists references upfront using a different format. No attempt is being made at converting the list of references.
 - **Terminology** sections do not have a specific structure in W3C specs. ISO has a more formal structure, including boilerplate text to reference ISO and IEC maintained terminology databases. No attempt is being made at creating a formal "Terms, definitions and abbreviated terms" section.
 
