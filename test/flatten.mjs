@@ -229,4 +229,9 @@ describe('The flattening algorithm', () => {
         '<tr><td><p><span>Row 2, cell 1</span></p></td><td><p><span>Row 2, cell 2</span></p></td></tr>' +
       '</table>');
   });
+
+  it('preserves line breaks', () => {
+    const html = '<p>My line<br> is broken.</p>';
+    assertResult(html, '<p><span>My line</span><br><span> is broken.</span></p>');
+  });
 });

@@ -140,9 +140,16 @@ export function dropNonSignificantWhitespaces(root) {
    *
    * If the inline node ends with a space and its next sibling starts with a
    * space, trim the end of the inline node.
+   *
+   * If the inline node is a line break and its next sibling starts with a
+   * space, trim the start of the next sibling.
    */
   function walkInline(node) {
-    if (node.textContent.match(/\s$/) &&
+    if ((node.nodeName === 'BR') &&
+        node.nextSibling?.textContent.match(/^\s/)) {
+      trimNode(node.nextSibling, 'start');
+    }
+    else if (node.textContent.match(/\s$/) &&
         node.nextSibling?.textContent.match(/^\s/)) {
       trimNode(node, 'end');
     }

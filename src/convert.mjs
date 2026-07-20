@@ -341,6 +341,15 @@ function convertInline(el, options) {
     }
     return [new ImageRun(imagerun)];
   }
+  else if (tagName === 'br') {
+    // We're dealing with a line break
+    const textrun = {
+      text: '',
+      break: 1,
+      ...getOptionsFromAttributes(el, options)
+    };
+    return [new TextRun(textrun)];
+  }
   else {
     // We're dealing with a <span> element
     const lines = el.textContent.split(/\n/);

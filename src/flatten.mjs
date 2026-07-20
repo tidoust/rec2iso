@@ -248,6 +248,12 @@ export function flattenDOM(element) {
       }
     }
 
+    // Handle line breaks
+    if (nodeName === 'br') {
+      const br = document.createElement('br');
+      return wrapWithId([br], elementId);
+    }
+
     // Handle tables
     if (nodeName === 'table') {
       const table = document.createElement('table');

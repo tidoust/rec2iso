@@ -79,4 +79,9 @@ describe('The non-significant whitespaces handler', () => {
     const html = `<p><img src="foo.jpg" alt="Bar"></p>`;
     assertResult(html, html);
   });
+
+  it('trims spaces after a line break', () => {
+    const html = `<p>My line<br> is broken.</p>`;
+    assertResult(html, `<p>My line<br>is broken.</p>`);
+  })
 });
