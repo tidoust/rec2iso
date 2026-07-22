@@ -24,6 +24,7 @@ const styles = await fs.readFile('./styles.xml', 'utf-8');
  * - The main content starts with the spec title.
  */
 export function createDocxParameters({ title, commits }) {
+  const year = (new Date()).getFullYear();
   return {
     externalStyles: styles,
     styles: {
@@ -56,6 +57,46 @@ export function createDocxParameters({ title, commits }) {
     sections: [
       {
         children: [
+          new Paragraph({
+            text: `© ISO ${year}`,
+            style: 'zzCopyright'
+          }),
+          new Paragraph({
+            text: 'All rights reserved. Unless otherwise specified, or required in the context of its implementation, no part of this publication may be reproduced or utilized otherwise in any form or by any means, electronic or mechanical, including photocopying, or posting on the internet or an intranet, without prior written permission. Permission can be requested from either ISO at the address below or ISO’s member body in the country of the requester.',
+            style: 'zzCopyright'
+          }),
+          new Paragraph({
+            text: 'ISO copyright office',
+            style: 'zzCopyright'
+          }),
+          new Paragraph({
+            text: 'CP 401 • Ch. de Blandonnet 8',
+            style: 'zzCopyright'
+          }),
+          new Paragraph({
+            text: 'CH-1214 Vernier, Geneva',
+            style: 'zzCopyright'
+          }),
+          new Paragraph({
+            text: 'Phone: +41 22 749 01 11',
+            style: 'zzCopyright'
+          }),
+          new Paragraph({
+            text: 'Email: copyright@iso.org',
+            style: 'zzCopyright'
+          }),
+          new Paragraph({
+            text: 'Website: www.iso.org',
+            style: 'zzCopyright'
+          }),
+          new Paragraph({
+            children: [
+              new TextRun('Published in Switzerland'),
+              new PageBreak()
+            ],
+            style: 'zzCopyright'
+          }),
+
           new Paragraph({
             text: 'Foreword',
             style: 'Foreword Title'

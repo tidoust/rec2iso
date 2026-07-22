@@ -60,7 +60,7 @@ Conversion also preserves IDs and links.
 Main known limitations are:
 
 - **Ordered lists** are treated as unordered lists. List numbering is harder to handle in Word documents. It requires defining a hierarchy in styles, and the docx library does not yet provide a way to import the numbering styles defined in the ISO Word template.
-- **ISO preamble pages** (title, copyright) are not created. These pages can easily be added afterwards as they mostly contain boilerplate text.
+- **ISO title page** is not created. This page can easily be added afterwards.
 - The **table of contents** is missing.
 - **Page headers/footers** are not created.
 - **Section numbers** are copied as-is and are not *real* section numbers. No attempt is being made at re-numbering sections either.

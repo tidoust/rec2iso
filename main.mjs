@@ -7,7 +7,6 @@
  * - Handle <abbr>, <cite>, <q>
  * - Convert absolute links to self to internal links if some exist
  * - Add the TOC
- * - Add the ISO boilerplate text (copyright)
  * - Add metadata to the .docx document such as creator, title, and description
  * - Consider renumbering sections?
  * - Consider rewriting the references appendix to a more ISO-friendly format?
