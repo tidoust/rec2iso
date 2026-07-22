@@ -7,7 +7,7 @@
  * - Handle <abbr>, <cite>, <q>
  * - Convert absolute links to self to internal links if some exist
  * - Add the TOC
- * - Add the ISO boilerplate text (Foreword, copyright)
+ * - Add the ISO boilerplate text (copyright)
  * - Add metadata to the .docx document such as creator, title, and description
  * - Consider renumbering sections?
  * - Consider rewriting the references appendix to a more ISO-friendly format?
@@ -46,7 +46,10 @@ const dom = await JSDOM.fromURL(url);
 dropNonSignificantWhitespaces(dom.window.document.body);
 
 // Convert the W3C Recommendation
-const doc = createDocxParameters();
+const doc = createDocxParameters({
+  title: dom.window.document.querySelector('h1').textContent,
+  commits: dom.window.document.querySelector("dd > a[href^='https://github.com/']").getAttribute('href')
+});
 await convertBody(dom.window.document.body, doc);
 
 // Serialize the .docx document
